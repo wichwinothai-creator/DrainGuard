@@ -1,0 +1,77 @@
+#include <Servo.h>
+
+Servo myServo;
+
+// Sensor
+int sensorLow = A0;
+int sensorMid = A1;
+int sensorHigh = A2;
+
+// LED
+int ledBlue = 2;
+int ledYellow = 3;
+int ledRed = 4;
+
+// Buzzer
+int buzzer = 5;
+
+int threshold = 300;
+
+void setup() {
+  Serial.begin(9600);
+  myServo.attach(9);
+
+  pinMode(ledBlue, OUTPUT);
+  pinMode(ledYellow, OUTPUT);
+  pinMode(ledRed, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+}
+
+void loop() {
+  int lowValue = analogRead(sensorLow);
+  int midValue = analogRead(sensorMid);
+  int highValue = analogRead(sensorHigh);
+
+  Serial.print("Low: "); Serial.print(lowValue);
+  Serial.print(" | Mid: "); Serial.print(midValue);
+  Serial.print(" | High: "); Serial.println(highValue);
+
+  // 🔴 ระดับรุนแรง
+  if (highValue > threshold) {
+    myServo.write(120);
+
+    digitalWrite(ledBlue, LOW);
+    digitalWrite(ledYellow, LOW);
+    digitalWrite(ledRed, HIGH);
+
+    digitalWrite(buzzer, HIGH);
+
+    Serial.println("LEVEL 3: CRITICAL");
+
+  // 🟡 ระดับปานกลาง
+  } else if (midValue > threshold) {
+    myServo.write(60);
+
+    digitalWrite(ledBlue, LOW);
+    digitalWrite(ledYellow, HIGH);
+    digitalWrite(ledRed, LOW);
+
+    digitalWrite(buzzer, LOW);
+
+    Serial.println("LEVEL 2: WARNING");
+
+  // 🔵 ระดับปกติ
+  } else {
+    myServo.write(0);
+
+    digitalWrite(ledBlue, HIGH);
+    digitalWrite(ledYellow, LOW);
+    digitalWrite(ledRed, LOW);
+
+    digitalWrite(buzzer, LOW);
+
+    Serial.println("LEVEL 1: NORMAL");
+  }
+
+  delay(1000);
+}
