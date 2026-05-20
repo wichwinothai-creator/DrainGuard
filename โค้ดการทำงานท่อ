@@ -1,43 +1,83 @@
-#include <Servo.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+#include <ESP32Servo.h>
 
 Servo myServo;
 
-// Sensor
+// ---------- WIFI ----------
+const char* ssid = "ชื่อไวไฟ";
+const char* password = "รหัสไวไฟ";
+
+// ---------- TELEGRAM ----------
+#define BOT_TOKEN "ใส่_BOT_TOKEN"
+#define CHAT_ID "ใส่_CHAT_ID"
+
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOT_TOKEN, client);
+
+// ---------- SENSOR ----------
 int sensorLow = A0;
 int sensorMid = A1;
 int sensorHigh = A2;
 
-// LED
+// ---------- LED ----------
 int ledBlue = 2;
 int ledYellow = 3;
 int ledRed = 4;
 
-// Buzzer
+// ---------- BUZZER ----------
 int buzzer = 5;
 
 int threshold = 300;
 
+// ป้องกันส่งข้อความซ้ำ
+int lastLevel = 0;
+
 void setup() {
   Serial.begin(9600);
+
   myServo.attach(9);
 
   pinMode(ledBlue, OUTPUT);
   pinMode(ledYellow, OUTPUT);
   pinMode(ledRed, OUTPUT);
   pinMode(buzzer, OUTPUT);
+
+  // WIFI
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWiFi Connected");
+
+  client.setInsecure();
+
+  bot.sendMessage(CHAT_ID, "Drain Guard Started", "");
 }
 
 void loop() {
+
   int lowValue = analogRead(sensorLow);
   int midValue = analogRead(sensorMid);
   int highValue = analogRead(sensorHigh);
 
-  Serial.print("Low: "); Serial.print(lowValue);
-  Serial.print(" | Mid: "); Serial.print(midValue);
-  Serial.print(" | High: "); Serial.println(highValue);
+  Serial.print("Low: ");
+  Serial.print(lowValue);
 
-  // 🔴 ระดับรุนแรง
+  Serial.print(" | Mid: ");
+  Serial.print(midValue);
+
+  Serial.print(" | High: ");
+  Serial.println(highValue);
+
+  // :red_circle: LEVEL 3
   if (highValue > threshold) {
+
     myServo.write(120);
 
     digitalWrite(ledBlue, LOW);
@@ -48,8 +88,17 @@ void loop() {
 
     Serial.println("LEVEL 3: CRITICAL");
 
-  // 🟡 ระดับปานกลาง
-  } else if (midValue > threshold) {
+    if (lastLevel != 3) {
+      bot.sendMessage(CHAT_ID,
+      ":red_circle:  LEVEL 3: น้ำสูงมาก!\nกรุณาตรวจสอบทันที", "");
+      lastLevel = 3;
+    }
+
+  }
+
+  // :yellow_circle: LEVEL 2
+  else if (midValue > threshold) {
+
     myServo.write(60);
 
     digitalWrite(ledBlue, LOW);
@@ -60,8 +109,17 @@ void loop() {
 
     Serial.println("LEVEL 2: WARNING");
 
-  // 🔵 ระดับปกติ
-  } else {
+    if (lastLevel != 2) {
+      bot.sendMessage(CHAT_ID,
+      ":yellow_circle: LEVEL 2: ระดับน้ำเริ่มสูง\nฝาท่อเปิดบางส่วน", "");
+      lastLevel = 2;
+    }
+
+  }
+
+  // :blue_circle: LEVEL 1
+  else {
+
     myServo.write(0);
 
     digitalWrite(ledBlue, HIGH);
@@ -71,6 +129,12 @@ void loop() {
     digitalWrite(buzzer, LOW);
 
     Serial.println("LEVEL 1: NORMAL");
+
+    if (lastLevel != 1) {
+      bot.sendMessage(CHAT_ID,
+      ":blue_circle: LEVEL 1: ระดับน้ำปกติ\nฝาท่อปิด", "");
+      lastLevel = 1;
+    }
   }
 
   delay(1000);
